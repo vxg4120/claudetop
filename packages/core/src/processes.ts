@@ -3,7 +3,6 @@ import { ClaudeProcess, RunawayThresholds, DEFAULT_THRESHOLDS } from './types'
 
 export function isRunaway(
   memory: { rss: number; vms: number },
-  cpu: number,
   runtime: number,
   thresholds: RunawayThresholds = DEFAULT_THRESHOLDS
 ): boolean {
@@ -19,7 +18,12 @@ export async function listProcesses(
   const allProcesses = await si.processes()
 
   const claudeProcs = allProcesses.list.filter(
-    (p) => p.name === 'claude' || p.command?.includes('claude')
+    (p) => {
+      if (p.name === 'claude') return true
+      // Match 'claude' as a word boundary in the command — avoids matching
+      // paths like /home/claudette/bin/node or --config claude.json
+      return /(?:^|\/)claude(?:\s|$)/.test(p.command ?? '')
+    }
   )
 
   return claudeProcs.map((p) => {
@@ -34,14 +38,14 @@ export async function listProcesses(
 
     return {
       pid: p.pid,
-      ppid: p.parentPid,
+      ppid: p.parentPid ?? 0,
       memory,
       cpu,
       runtime,
       status: mapStatus(p.state ?? ''),
       cwd: p.path ?? 'unknown',
       args: parseArgs(p.params ?? ''),
-      isRunaway: isRunaway(memory, cpu, runtime, thresholds),
+      isRunaway: isRunaway(memory, runtime, thresholds),
       logPath: undefined,
     }
   })

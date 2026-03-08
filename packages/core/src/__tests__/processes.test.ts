@@ -32,15 +32,15 @@ describe('listProcesses', () => {
 describe('isRunaway', () => {
   it('flags high memory as runaway', () => {
     const thresholds = { ...DEFAULT_THRESHOLDS, memoryRssBytes: 100 }
-    expect(isRunaway({ rss: 200, vms: 0 }, 0, 0, thresholds)).toBe(true)
+    expect(isRunaway({ rss: 200, vms: 0 }, 0, thresholds)).toBe(true)
   })
 
   it('flags long runtime as runaway', () => {
     const thresholds = { ...DEFAULT_THRESHOLDS, runtimeSeconds: 10 }
-    expect(isRunaway({ rss: 0, vms: 0 }, 0, 20, thresholds)).toBe(true)
+    expect(isRunaway({ rss: 0, vms: 0 }, 20, thresholds)).toBe(true)
   })
 
   it('does not flag normal processes', () => {
-    expect(isRunaway({ rss: 100_000, vms: 0 }, 5, 60, DEFAULT_THRESHOLDS)).toBe(false)
+    expect(isRunaway({ rss: 100_000, vms: 0 }, 60, DEFAULT_THRESHOLDS)).toBe(false)
   })
 })
