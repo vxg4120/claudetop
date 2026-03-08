@@ -26,4 +26,8 @@ describe('formatStatus', () => {
   it('shows ok for normal processes', () => {
     expect(formatStatus(false, 'running')).toBe('ok')
   })
+  it('passes through non-running statuses', () => {
+    expect(formatStatus(false, 'zombie')).toBe('zombie')
+    expect(formatStatus(false, 'stopped')).toBe('stopped')
+  })
 })
