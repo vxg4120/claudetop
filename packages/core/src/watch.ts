@@ -10,8 +10,12 @@ export function watchProcesses(
 
   const tick = async () => {
     if (!active) return
-    const processes = await listProcesses(thresholds)
-    if (active) callback(processes)
+    try {
+      const processes = await listProcesses(thresholds)
+      if (active) callback(processes)
+    } catch {
+      // listProcesses failed (e.g., ps unavailable) — skip this tick, keep watching
+    }
     if (active) setTimeout(tick, intervalMs)
   }
 
@@ -20,6 +24,10 @@ export function watchProcesses(
   return () => { active = false }
 }
 
+/**
+ * Send a signal to a Claude process.
+ * @throws {Error} ESRCH if the process does not exist — callers should handle this.
+ */
 export function killProcess(pid: number, signal: 'SIGTERM' | 'SIGKILL' = 'SIGTERM'): void {
   process.kill(pid, signal)
 }
