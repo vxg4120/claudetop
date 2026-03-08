@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p electron/tsconfig.json && vite build",
     "dev": "concurrently \"tsc -p electron/tsconfig.json --watch\" \"vite\" \"electron .\"",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "package": "electron-builder"
   },
   "dependencies": {
