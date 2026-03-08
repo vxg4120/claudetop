@@ -1,0 +1,17 @@
+appId: com.claudetop.app
+productName: claudetop
+directories:
+  output: dist/release
+files:
+  - dist/**
+  - package.json
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+linux:
+  target:
+    - target: AppImage
+    - target: deb
+  category: Development
