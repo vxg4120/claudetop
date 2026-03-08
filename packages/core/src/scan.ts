@@ -17,7 +17,7 @@ const FLAGGED_FILE_PATTERNS = [
   /^\/etc\/passwd$/,
   /^\/etc\/shadow$/,
   /^\/etc\/sudoers/,
-  /^\/.ssh\//,
+  /\/.ssh\//,
   /^\/private\/etc\//,
 ]
 

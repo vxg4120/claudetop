@@ -35,6 +35,11 @@ describe('isFlaggedFile', () => {
     expect(isFlaggedFile('/etc/shadow')).toBe(true)
   })
 
+  it('flags SSH key files', () => {
+    expect(isFlaggedFile('/Users/user/.ssh/id_rsa')).toBe(true)
+    expect(isFlaggedFile('/root/.ssh/authorized_keys')).toBe(true)
+  })
+
   it('allows normal claude files', () => {
     expect(isFlaggedFile('/Users/user/.claude/history.jsonl')).toBe(false)
     expect(isFlaggedFile('/tmp/claude-abc123')).toBe(false)
