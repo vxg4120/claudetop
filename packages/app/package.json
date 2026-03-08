@@ -12,7 +12,8 @@
   "dependencies": {
     "@claudetop/core": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "recharts": "latest"
   },
   "devDependencies": {
     "electron": "^29.0.0",

@@ -12,11 +12,15 @@
   },
   "dependencies": {
     "systeminformation": "^5.22.0",
-    "node-pty": "^1.0.0"
+    "node-pty": "^1.0.0",
+    "better-sqlite3": "latest",
+    "chokidar": "^3.6.0",
+    "@anthropic-ai/sdk": "latest"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
     "vitest": "^1.4.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "@types/better-sqlite3": "latest"
   }
 }
