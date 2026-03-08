@@ -1,9 +1,23 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron'
 import * as path from 'path'
 import { listProcesses, killProcess, securityScan, watchProcesses } from '@claudetop/core'
+import {
+  openDb, buildIndex, querySessions, getCostReport,
+  generateStandup, estimateInsightCost, getLlmUsageSummary,
+} from '@claudetop/core'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+
+let analyticsDb: ReturnType<typeof openDb> | null = null
+
+function getDb() {
+  if (!analyticsDb) {
+    analyticsDb = openDb()
+    buildIndex(analyticsDb)
+  }
+  return analyticsDb
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -41,6 +55,19 @@ function setupIPC() {
     killProcess(pid, (signal as 'SIGTERM' | 'SIGKILL') ?? 'SIGTERM')
   })
   ipcMain.handle('security-scan', (_event, pid?: number) => securityScan(pid))
+
+  ipcMain.handle('get-sessions', (_event, filter: unknown) =>
+    querySessions(getDb(), filter as Parameters<typeof querySessions>[1]))
+  ipcMain.handle('get-cost-report', (_event, filter: unknown) =>
+    getCostReport(getDb(), filter as Parameters<typeof getCostReport>[1]))
+  ipcMain.handle('estimate-standup-cost', () => estimateInsightCost(2000))
+  ipcMain.handle('generate-standup', async (_event, confirmed: boolean) => {
+    if (!confirmed) return { error: 'Not confirmed', estimatedCost: estimateInsightCost(2000) }
+    try { return await generateStandup(getDb()) }
+    catch (err: unknown) { return { error: err instanceof Error ? err.message : String(err) } }
+  })
+  ipcMain.handle('get-llm-usage', () => getLlmUsageSummary(getDb()))
+  ipcMain.handle('refresh-index', () => { buildIndex(getDb()); return true })
 }
 
 function setupWatcher() {
@@ -57,6 +84,8 @@ app.whenReady().then(() => {
   setupIPC()
   setupWatcher()
 })
+
+app.on('before-quit', () => { analyticsDb?.close() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
