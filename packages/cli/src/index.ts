@@ -5,6 +5,7 @@ import { killCommand, killAllCommand } from './commands/kill'
 import { inspectCommand } from './commands/inspect'
 import { scanCommand } from './commands/scan'
 import { logsCommand } from './commands/logs'
+import { watchCommand } from './commands/watch'
 
 const program = new Command()
 
@@ -22,9 +23,7 @@ program
 program
   .command('watch')
   .description('Live-refreshing process list')
-  .action(() => {
-    console.log('watch mode coming in next task')
-  })
+  .action(() => watchCommand())
 
 program
   .command('inspect <pid>')

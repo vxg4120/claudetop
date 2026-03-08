@@ -2,6 +2,7 @@
   "name": "claudetop",
   "version": "0.1.0",
   "description": "Claude CLI process manager",
+  "type": "module",
   "bin": {
     "claudetop": "dist/index.js"
   },
