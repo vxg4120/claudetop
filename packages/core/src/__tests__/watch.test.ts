@@ -11,9 +11,8 @@ describe('watchProcesses', () => {
   it('calls callback with process list', async () => {
     const callback = vi.fn()
     const unsubscribe = watchProcesses(100, callback)
-    await new Promise((r) => setTimeout(r, 150))
+    await vi.waitFor(() => expect(callback).toHaveBeenCalled(), { timeout: 5000 })
     unsubscribe()
-    expect(callback).toHaveBeenCalled()
     expect(Array.isArray(callback.mock.calls[0][0])).toBe(true)
   })
 
