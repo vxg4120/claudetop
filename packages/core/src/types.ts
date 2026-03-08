@@ -55,3 +55,61 @@ export const DEFAULT_THRESHOLDS: RunawayThresholds = {
   cpuPercent: 80,
   cpuSustainedSeconds: 60,
 }
+
+export interface TokenUsage {
+  input_tokens: number
+  cache_creation_input_tokens: number
+  cache_read_input_tokens: number
+  output_tokens: number
+}
+
+export interface ClaudeSession {
+  sessionId: string
+  projectSlug: string       // URL-decoded directory name
+  cwd: string
+  gitBranch: string | null
+  model: string | null
+  startedAt: Date | null
+  endedAt: Date | null
+  durationSeconds: number | null
+  usage: TokenUsage
+  estimatedCostUsd: number
+  isSidechain: boolean
+  parentSessionId: string | null
+  summary: string | null    // LLM-generated, null until requested
+  permissionMode: string | null
+}
+
+export interface SessionFilter {
+  project?: string
+  since?: Date
+  until?: Date
+  model?: string
+  limit?: number
+}
+
+export interface CostReport {
+  totalUsd: number
+  byProject: Array<{ project: string; usd: number; sessions: number }>
+  byModel: Array<{ model: string; usd: number; sessions: number }>
+  byDay: Array<{ date: string; usd: number; sessions: number }>
+  period: { from: Date; to: Date }
+}
+
+export interface StandupReport {
+  generatedAt: Date
+  done: Array<{ project: string; summary: string; sessions: number; costUsd: number }>
+  inProgress: Array<{ sessionId: string; project: string; model: string | null; runtimeMinutes: number; branch: string | null }>
+  blockers: Array<{ sessionId: string; project: string; description: string }>
+  llmUsage: LlmUsageRecord
+}
+
+export interface LlmUsageRecord {
+  id?: number
+  timestamp: Date
+  feature: 'standup' | 'summarize' | 'insights'
+  inputTokens: number
+  outputTokens: number
+  estimatedCostUsd: number
+  sessionId: string | null
+}
