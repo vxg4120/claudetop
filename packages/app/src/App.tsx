@@ -1,10 +1,23 @@
-import React from 'react'
+import React, { useState } from 'react'
+import './styles.css'
+import { Sidebar } from './components/Sidebar'
+import { ProcessList } from './components/ProcessList'
+import { DetailPanel } from './components/DetailPanel'
+import { useProcesses } from './hooks/useProcesses'
 
 export function App() {
+  const { processes, selected, setSelected, killProcess } = useProcesses()
+  const [filter, setFilter] = useState<'all' | 'runaway'>('all')
+
+  const filtered = filter === 'runaway' ? processes.filter((p) => p.isRunaway) : processes
+
   return (
-    <div style={{ fontFamily: 'monospace', padding: 20, background: '#0d0d0d', color: '#e0e0e0', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: 18, marginBottom: 16 }}>claudetop</h1>
-      <p>Loading process data...</p>
+    <div className="layout">
+      <Sidebar processes={processes} activeFilter={filter} onFilterChange={setFilter} />
+      <div className="main">
+        <ProcessList processes={filtered} selected={selected} onSelect={setSelected} />
+        <DetailPanel process={selected} onKill={killProcess} />
+      </div>
     </div>
   )
 }

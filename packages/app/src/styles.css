@@ -1,0 +1,118 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d0d0d;
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  height: 100vh;
+}
+
+.sidebar {
+  background: #111;
+  border-right: 1px solid #222;
+  padding: 16px 0;
+  -webkit-app-region: drag;
+}
+
+.sidebar-title {
+  padding: 8px 16px 16px;
+  color: #4a9eff;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.sidebar-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-item:hover { background: #1a1a1a; }
+.sidebar-item.active { background: #1d2735; color: #4a9eff; }
+
+.badge {
+  background: #e53e3e;
+  color: white;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.process-table {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; color: #666; padding: 6px 12px; border-bottom: 1px solid #222; font-weight: 600; }
+td { padding: 8px 12px; border-bottom: 1px solid #1a1a1a; cursor: pointer; }
+tr:hover td { background: #111; }
+tr.runaway td { color: #fc8181; }
+tr.selected td { background: #1d2735; }
+
+.detail-panel {
+  height: 280px;
+  border-top: 1px solid #222;
+  padding: 16px;
+  overflow-y: auto;
+  background: #0a0a0a;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.detail-row { display: flex; gap: 16px; margin: 4px 0; }
+.detail-label { color: #666; width: 100px; flex-shrink: 0; }
+.detail-value { color: #a0aec0; }
+
+.kill-btn {
+  background: #742a2a;
+  color: #feb2b2;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 8px;
+  font-family: inherit;
+  font-size: 12px;
+}
+.kill-btn:hover { background: #9b2c2c; }
+.kill-btn.force { background: #1a0000; color: #fc8181; }
+
+.empty-state {
+  color: #444;
+  text-align: center;
+  padding: 48px 24px;
+  font-size: 14px;
+}
+
+.confirm-text {
+  color: #f6ad55;
+  margin-right: 8px;
+  font-size: 12px;
+}
+.confirm-text.force-text { color: #fc8181; }
