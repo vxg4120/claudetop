@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
-import { listCommand } from './commands/list'
-import { killCommand, killAllCommand } from './commands/kill'
-import { inspectCommand } from './commands/inspect'
-import { scanCommand } from './commands/scan'
-import { logsCommand } from './commands/logs'
-import { watchCommand } from './commands/watch'
+import { listCommand } from './commands/list.js'
+import { killCommand, killAllCommand } from './commands/kill.js'
+import { inspectCommand } from './commands/inspect.js'
+import { scanCommand } from './commands/scan.js'
+import { logsCommand } from './commands/logs.js'
+import { watchCommand } from './commands/watch.js'
+import { sessionsCommand } from './commands/sessions.js'
+import { reportCommand } from './commands/report.js'
+import { standupCommand } from './commands/standup.js'
+import { pruneCommand } from './commands/prune.js'
 
 const program = new Command()
 
@@ -56,5 +60,35 @@ program
     }
     scanCommand(pid ? parseInt(pid, 10) : undefined)
   })
+
+program
+  .command('sessions [sessionId]')
+  .description('Browse historical Claude sessions')
+  .option('--project <name>', 'Filter by project name')
+  .option('--since <period>', 'e.g. 7d, 2w, 1m')
+  .option('--limit <n>', 'Max results', '20')
+  .option('--json', 'Output as JSON')
+  .action((sessionId, options) => sessionsCommand(sessionId, options))
+
+program
+  .command('report')
+  .description('Cost and usage report')
+  .option('--period <period>', 'day | week | month', 'week')
+  .option('--project <name>', 'Filter by project')
+  .option('--json', 'Output as JSON')
+  .action((options) => reportCommand(options))
+
+program
+  .command('standup')
+  .description('AI-powered agent standup (done/doing/blockers)')
+  .option('--yes', 'Skip cost confirmation')
+  .option('--json', 'Output as JSON')
+  .action((options) => standupCommand(options))
+
+program
+  .command('prune')
+  .description('Remove orphaned session records from DB')
+  .option('--dry-run', 'Show what would be removed without removing')
+  .action((options) => pruneCommand(options))
 
 program.parse()

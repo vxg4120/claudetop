@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Text, Box } from 'ink'
 import { ClaudeProcess, watchProcesses } from '@claudetop/core'
-import { formatMemory, formatRuntime, formatStatus } from '../utils/format'
+import { formatMemory, formatRuntime, formatStatus } from '../utils/format.js'
 
 export function ProcessTable() {
   const [processes, setProcesses] = useState<ClaudeProcess[]>([])

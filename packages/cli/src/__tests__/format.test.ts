@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMemory, formatRuntime, formatStatus } from '../utils/format'
+import { formatMemory, formatRuntime, formatStatus } from '../utils/format.js'
 
 describe('formatMemory', () => {
   it('formats bytes as MB', () => {

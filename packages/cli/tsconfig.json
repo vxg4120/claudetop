@@ -4,8 +4,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "jsx": "react-jsx",
-    "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "include": ["src/**/*"]
 }

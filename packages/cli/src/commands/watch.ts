@@ -1,6 +1,6 @@
 import React from 'react'
 import { render } from 'ink'
-import { ProcessTable } from '../components/ProcessTable'
+import { ProcessTable } from '../components/ProcessTable.js'
 
 export function watchCommand() {
   render(React.createElement(ProcessTable))

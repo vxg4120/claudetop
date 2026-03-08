@@ -1,6 +1,6 @@
 import { openDb, closeDb, buildIndex, querySessions } from '@claudetop/core'
 import chalk from 'chalk'
-import { formatRuntime } from '../utils/format'
+import { formatRuntime } from '../utils/format.js'
 
 interface SessionsOptions {
   project?: string

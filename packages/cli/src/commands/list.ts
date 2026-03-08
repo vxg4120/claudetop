@@ -1,5 +1,5 @@
 import { listProcesses } from '@claudetop/core'
-import { formatMemory, formatRuntime, formatStatus } from '../utils/format'
+import { formatMemory, formatRuntime, formatStatus } from '../utils/format.js'
 
 export async function listCommand(options: { json?: boolean } = {}) {
   const processes = await listProcesses()

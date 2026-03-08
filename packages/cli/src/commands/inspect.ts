@@ -1,5 +1,5 @@
 import { listProcesses, checkPermissions } from '@claudetop/core'
-import { formatMemory, formatRuntime } from '../utils/format'
+import { formatMemory, formatRuntime } from '../utils/format.js'
 
 export async function inspectCommand(pid: number) {
   const [processes, permissions] = await Promise.all([listProcesses(), checkPermissions()])
