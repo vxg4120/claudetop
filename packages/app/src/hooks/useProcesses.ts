@@ -3,13 +3,18 @@ import { useState, useEffect } from 'react'
 interface ClaudeProcess {
   pid: number
   ppid: number
+  name: string
   memory: { rss: number; vms: number }
   cpu: number
   runtime: number
   status: string
   cwd: string
+  project?: string
   args: string[]
   isRunaway: boolean
+  isChild?: boolean
+  isOrphaned?: boolean
+  apiIdleMinutes?: number
   logPath?: string
 }
 

@@ -50,12 +50,21 @@ export function upsertSession(db: Db, filePath: string): boolean {
 
 export function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): number {
   const files = listSessionFiles(claudeDir)
+
+  // Skip sessions already indexed to avoid re-reading gigabytes of data on every startup
+  const existing = new Set(
+    (db.prepare('SELECT session_id FROM sessions').all() as { session_id: string }[])
+      .map((r) => r.session_id)
+  )
+  const newFiles = files.filter((f) => !existing.has(path.basename(f, '.jsonl')))
+  if (newFiles.length === 0) return 0
+
   const insert = db.transaction((paths: string[]) => {
     let count = 0
     for (const p of paths) { if (upsertSession(db, p)) count++ }
     return count
   })
-  return insert(files)
+  return insert(newFiles)
 }
 
 export function startWatcher(db: Db, claudeDir = getClaudeProjectsDir()): () => void {

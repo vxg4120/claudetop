@@ -9,8 +9,13 @@ export interface ClaudeProcess {
   runtime: number       // seconds
   status: 'running' | 'sleeping' | 'stopped' | 'zombie' | 'unknown'
   cwd: string
+  name: string          // process binary name (e.g. "claude", "node")
+  project?: string      // last 2 segments of cwd (e.g. "repos/claudetop")
   args: string[]
   isRunaway: boolean
+  isChild?: boolean     // true if parent is also a Claude process (subtask)
+  isOrphaned?: boolean  // parent process is dead; process was left running by claude
+  apiIdleMinutes?: number // minutes since last JSONL write for this CWD (null if unknown)
   logPath?: string
 }
 
@@ -51,7 +56,7 @@ export interface RunawayThresholds {
 
 export const DEFAULT_THRESHOLDS: RunawayThresholds = {
   memoryRssBytes: 2 * 1024 * 1024 * 1024,
-  runtimeSeconds: 7200,
+  runtimeSeconds: 86400,  // 24h — long-running sessions are normal
   cpuPercent: 80,
   cpuSustainedSeconds: 60,
 }
@@ -99,8 +104,9 @@ export interface CostReport {
 export interface StandupReport {
   generatedAt: Date
   done: Array<{ project: string; summary: string; sessions: number; costUsd: number }>
+  nextUp: Array<{ project: string; description: string }>
   inProgress: Array<{ sessionId: string; project: string; model: string | null; runtimeMinutes: number; branch: string | null }>
-  blockers: Array<{ sessionId: string; project: string; description: string }>
+  blockers: Array<{ project: string; description: string }>
   llmUsage: LlmUsageRecord
 }
 

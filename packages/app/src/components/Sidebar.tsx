@@ -6,9 +6,10 @@ interface Props {
   processes: ClaudeProcess[]
   activeView: View
   onViewChange: (view: View) => void
+  alertCount: number
 }
 
-export function Sidebar({ processes, activeView, onViewChange }: Props) {
+export function Sidebar({ processes, activeView, onViewChange, alertCount }: Props) {
   const runawayCount = processes.filter((p) => p.isRunaway).length
 
   const item = (label: string, view: View, badge?: React.ReactNode) => (
@@ -29,6 +30,10 @@ export function Sidebar({ processes, activeView, onViewChange }: Props) {
       {item('Analytics', 'analytics')}
       <div className="sidebar-section-label">Agent AI</div>
       {item('Standup ✨', 'standup')}
+      {item('Usage', 'usage')}
+      {item('Alerts', 'alerts', alertCount > 0 ? <span className="badge" style={{ background: '#fc8181' }}>{alertCount}</span> : null)}
+      <div className="sidebar-section-label">Config</div>
+      {item('Settings', 'settings')}
     </div>
   )
 }

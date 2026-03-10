@@ -12,6 +12,13 @@ type ClaudeTop = { getCostReport: (f: unknown) => Promise<CostReport> }
 
 const COLORS = ['#4a9eff', '#68d391', '#f6ad55', '#fc8181', '#b794f4']
 
+// Slugs are encoded paths like "-Users-vgupta-Development-repos-claudetop"
+// Show the last 2 meaningful segments, e.g. "repos/claudetop"
+function projectLabel(slug: string): string {
+  const parts = slug.replace(/^-/, '').split('-').filter(Boolean)
+  return parts.length >= 2 ? parts.slice(-2).join('/') : slug
+}
+
 export function AnalyticsPanel() {
   const [report, setReport] = useState<CostReport | null>(null)
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week')
@@ -28,7 +35,7 @@ export function AnalyticsPanel() {
     <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
       <div className="panel-toolbar" style={{ marginBottom: 16, padding: 0, border: 'none' }}>
         <span style={{ color: '#e0e0e0', fontWeight: 'bold', marginRight: 16 }}>
-          Total: <span style={{ color: '#68d391' }}>${report.totalUsd.toFixed(4)}</span>
+          Total: <span style={{ color: '#68d391' }}>${report.totalUsd.toFixed(2)}</span>
         </span>
         {(['day', 'week', 'month'] as const).map((p) => (
           <button key={p} className="kill-btn"
@@ -43,8 +50,8 @@ export function AnalyticsPanel() {
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={report.byDay}>
               <XAxis dataKey="date" tick={{ fill: '#666', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#666', fontSize: 10 }} tickFormatter={(v: number) => `$${v.toFixed(3)}`} />
-              <Tooltip formatter={(v: number) => [`$${v.toFixed(4)}`, 'Cost']} contentStyle={{ background: '#111', border: '1px solid #222', color: '#e0e0e0' }} />
+              <YAxis tick={{ fill: '#666', fontSize: 10 }} tickFormatter={(v: number) => `$${v.toFixed(2)}`} />
+              <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Cost']} contentStyle={{ background: '#111', border: '1px solid #222', color: '#e0e0e0' }} />
               <Bar dataKey="usd" fill="#4a9eff" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -56,8 +63,8 @@ export function AnalyticsPanel() {
           <div style={{ color: '#666', marginBottom: 8, fontSize: 11, textTransform: 'uppercase' }}>By Project</div>
           {report.byProject.slice(0, 6).map((p, i) => (
             <div key={p.project} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ color: COLORS[i % COLORS.length] }}>{p.project.slice(0, 22)}</span>
-              <span style={{ color: '#68d391' }}>${p.usd.toFixed(4)}</span>
+              <span style={{ color: COLORS[i % COLORS.length] }} title={p.project}>{projectLabel(p.project)}</span>
+              <span style={{ color: '#68d391' }}>${p.usd.toFixed(2)}</span>
             </div>
           ))}
         </div>
@@ -66,7 +73,7 @@ export function AnalyticsPanel() {
           {report.byModel.map((m, i) => (
             <div key={m.model} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ color: COLORS[i % COLORS.length] }}>{(m.model ?? '—').replace('claude-', '')}</span>
-              <span style={{ color: '#f6ad55' }}>${m.usd.toFixed(4)}</span>
+              <span style={{ color: '#f6ad55' }}>${m.usd.toFixed(2)}</span>
             </div>
           ))}
         </div>

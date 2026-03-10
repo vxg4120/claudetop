@@ -3,11 +3,13 @@ import * as path from 'path'
 import * as os from 'os'
 import { ClaudeSession, TokenUsage } from './types'
 
+// Pricing per 1M tokens. Updated Feb 2026: Opus 4.6 reduced from $15/$75 → $5/$25.
+// Source: platform.claude.com/docs/about-claude/pricing
 export const MODEL_PRICING: Record<string, {
   input: number; cacheWrite: number; cacheRead: number; output: number
 }> = {
-  'claude-opus-4-6':   { input: 15.00, cacheWrite: 18.75, cacheRead: 1.50, output: 75.00 },
-  'claude-opus-4-5':   { input: 15.00, cacheWrite: 18.75, cacheRead: 1.50, output: 75.00 },
+  'claude-opus-4-6':   { input:  5.00, cacheWrite:  6.25, cacheRead: 0.50, output: 25.00 },
+  'claude-opus-4-5':   { input:  5.00, cacheWrite:  6.25, cacheRead: 0.50, output: 25.00 },
   'claude-sonnet-4-6': { input:  3.00, cacheWrite:  3.75, cacheRead: 0.30, output: 15.00 },
   'claude-sonnet-4-5': { input:  3.00, cacheWrite:  3.75, cacheRead: 0.30, output: 15.00 },
   'claude-haiku-4-5':  { input:  0.80, cacheWrite:  1.00, cacheRead: 0.08, output:  4.00 },

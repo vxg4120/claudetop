@@ -1,8 +1,8 @@
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { SecurityReport, NetworkConnection } from './types'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 const ALLOWED_HOSTS = [
   'api.anthropic.com',
@@ -56,13 +56,19 @@ export async function securityScan(pid?: number): Promise<SecurityReport> {
   let networkConnections: NetworkConnection[] = []
   let openFiles: string[] = []
 
+  // Validate pid is a safe integer before using in any command
+  const safePid = pid !== undefined && Number.isInteger(pid) && pid > 0 ? pid : undefined
+
   try {
     if (platform === 'darwin') {
-      const pidFlag = pid ? `-p ${pid}` : '-c claude'
-      const { stdout: netOut } = await execAsync(`lsof ${pidFlag} -a -i 2>/dev/null || true`)
+      // Use execFile (array args, no shell) to prevent injection
+      const pidArgs: string[] = safePid ? ['-p', String(safePid)] : ['-c', 'claude']
+      const { stdout: netOut } = await execFileAsync('lsof', [...pidArgs, '-a', '-i'])
+        .catch(() => ({ stdout: '' }))
       networkConnections = parseNetworkConnections(netOut)
 
-      const { stdout: fileOut } = await execAsync(`lsof ${pidFlag} 2>/dev/null || true`)
+      const { stdout: fileOut } = await execFileAsync('lsof', pidArgs)
+        .catch(() => ({ stdout: '' }))
       openFiles = fileOut
         .split('\n')
         .slice(1) // skip header
@@ -70,9 +76,10 @@ export async function securityScan(pid?: number): Promise<SecurityReport> {
         .filter(Boolean)
         .filter((f) => f.startsWith('/')) // only filesystem paths
     } else {
-      // Linux: read /proc
-      if (pid) {
-        const { stdout } = await execAsync(`ls -la /proc/${pid}/fd 2>/dev/null || true`)
+      // Linux: read /proc via fs, not shell
+      if (safePid) {
+        const { stdout } = await execFileAsync('ls', ['-la', `/proc/${safePid}/fd`])
+          .catch(() => ({ stdout: '' }))
         openFiles = stdout
           .split('\n')
           .map((l) => l.split(' -> ').pop()?.trim() ?? '')

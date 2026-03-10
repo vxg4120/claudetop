@@ -16,4 +16,25 @@ contextBridge.exposeInMainWorld('claudetop', {
   generateStandup: (confirmed: boolean) => ipcRenderer.invoke('generate-standup', confirmed),
   getLlmUsage: () => ipcRenderer.invoke('get-llm-usage'),
   refreshIndex: () => ipcRenderer.invoke('refresh-index'),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  setSettings: (patch: Record<string, unknown>) => ipcRenderer.invoke('set-settings', patch),
+  getUsageLimits: () => ipcRenderer.invoke('get-usage-limits'),
+  getPermissionStatus: () => ipcRenderer.invoke('get-permission-status'),
+  openSystemPreferences: (pane: string) => ipcRenderer.invoke('open-system-preferences', pane),
+  checkScopeWarnings: (cwds: string[]) => ipcRenderer.invoke('check-scope-warnings', cwds),
+  analyzeProcess: (p: unknown) => ipcRenderer.invoke('analyze-process', p),
+  summarizeSession: (sessionId: string) => ipcRenderer.invoke('summarize-session', sessionId),
+  onTokenBurnAlert: (callback: (alert: unknown) => void) => {
+    ipcRenderer.on('token-burn-alert', (_event, alert) => callback(alert))
+    return () => ipcRenderer.removeAllListeners('token-burn-alert')
+  },
+  onScopeWarning: (callback: (warning: unknown) => void) => {
+    ipcRenderer.on('scope-warning', (_event, warning) => callback(warning))
+    return () => ipcRenderer.removeAllListeners('scope-warning')
+  },
+  onStandupChunk: (callback: (chunk: string) => void) => {
+    ipcRenderer.on('standup-chunk', (_event, chunk) => callback(chunk))
+    return () => ipcRenderer.removeAllListeners('standup-chunk')
+  },
+  testNotification: () => ipcRenderer.invoke('test-notification'),
 })

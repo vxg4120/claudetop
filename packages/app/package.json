@@ -1,5 +1,6 @@
 {
   "name": "claudetop-app",
+  "productName": "claudetop",
   "version": "0.1.0",
   "description": "claudetop Electron desktop app",
   "main": "dist/electron/main.js",
