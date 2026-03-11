@@ -54,6 +54,7 @@ export function parseSessionFile(filePath: string): ClaudeSession | null {
   let lines: string[]
   try {
     lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
+    if (lines.length > 20000) lines = lines.slice(0, 20000) // cap to avoid OOM on huge files
   } catch {
     return null
   }

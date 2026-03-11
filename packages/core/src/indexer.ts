@@ -59,12 +59,16 @@ export function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): number {
       .map((r) => [r.session_id, new Date(r.indexed_at).getTime()])
   )
 
+  const MAX_FILE_BYTES = 50 * 1024 * 1024 // skip files > 50 MB to avoid OOM
+
   const staleFiles = files.filter((f) => {
-    const id = path.basename(f, '.jsonl')
-    const lastIndexed = indexedAt.get(id)
-    if (!lastIndexed) return true // new file
     try {
-      return fs.statSync(f).mtimeMs > lastIndexed
+      const stat = fs.statSync(f)
+      if (stat.size > MAX_FILE_BYTES) return false
+      const id = path.basename(f, '.jsonl')
+      const lastIndexed = indexedAt.get(id)
+      if (!lastIndexed) return true // new file
+      return stat.mtimeMs > lastIndexed
     } catch {
       return false
     }
