@@ -104,7 +104,8 @@ function finalizeSession(state: ReturnType<typeof makeSessionState>, filePath: s
     ? Math.round((state.endedAt.getTime() - state.startedAt.getTime()) / 1000)
     : null
   return {
-    sessionId: state.sessionIdFromRecord ?? state.sessionId,
+    // Subagent files carry the parent's sessionId in their records; keep the file-based ID.
+    sessionId: state.isSubagentPath ? state.sessionId : (state.sessionIdFromRecord ?? state.sessionId),
     projectSlug: state.projectSlug,
     cwd: state.cwd || state.projectSlug.replace(/-/g, '/'),
     gitBranch: state.gitBranch,

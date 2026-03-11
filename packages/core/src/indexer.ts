@@ -67,7 +67,8 @@ export async function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): Pr
 
   const indexedAt = new Map(
     (db.prepare('SELECT session_id, indexed_at FROM sessions').all() as { session_id: string; indexed_at: string }[])
-      .map((r) => [r.session_id, new Date(r.indexed_at).getTime()])
+      // Append ' UTC' so JS parses SQLite's datetime('now') string as UTC, not local time.
+      .map((r) => [r.session_id, new Date(r.indexed_at + ' UTC').getTime()])
   )
 
   const STREAM_THRESHOLD = 10 * 1024 * 1024 // stream files > 10 MB
