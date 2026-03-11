@@ -83,6 +83,7 @@ export interface ClaudeSession {
   parentSessionId: string | null
   summary: string | null    // LLM-generated, null until requested
   permissionMode: string | null
+  dayMap?: Map<string, TokenUsage>   // keyed by YYYY-MM-DD local date
 }
 
 export interface SessionFilter {

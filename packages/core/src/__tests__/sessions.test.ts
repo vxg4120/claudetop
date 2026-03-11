@@ -64,3 +64,28 @@ describe('parseSessionFile', () => {
     expect(result).toBeNull()
   })
 })
+
+describe('parseSessionFile dayMap', () => {
+  it('splits tokens across days based on message timestamps', () => {
+    const tmpDir = path.join(os.tmpdir(), `claude-test-${Date.now()}`, '-Users-test-proj')
+    fs.mkdirSync(tmpDir, { recursive: true })
+    const filePath = path.join(tmpDir, 'day-sess.jsonl')
+
+    const usage = { input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 50 }
+    fs.writeFileSync(filePath, [
+      JSON.stringify({ type: 'user', sessionId: 'day-sess', timestamp: '2026-03-08T10:00:00Z', cwd: '/Users/test/proj' }),
+      JSON.stringify({ type: 'assistant', sessionId: 'day-sess', timestamp: '2026-03-08T23:00:00Z',
+        message: { role: 'assistant', model: 'claude-sonnet-4-6', usage } }),
+      JSON.stringify({ type: 'assistant', sessionId: 'day-sess', timestamp: '2026-03-09T01:00:00Z',
+        message: { role: 'assistant', model: 'claude-sonnet-4-6', usage } }),
+    ].join('\n'))
+
+    const session = parseSessionFile(filePath)
+    expect(session).not.toBeNull()
+    expect(session!.dayMap).toBeDefined()
+    const days = Array.from(session!.dayMap!.entries())
+    const totalOut = days.reduce((s, [, u]) => s + u.output_tokens, 0)
+    expect(totalOut).toBe(100)   // 2 messages × 50 output_tokens
+    fs.rmSync(path.dirname(tmpDir), { recursive: true })
+  })
+})

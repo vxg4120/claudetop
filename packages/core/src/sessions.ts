@@ -72,6 +72,7 @@ function makeSessionState(filePath: string) {
     parentSessionId: isSubagentPath ? path.basename(path.dirname(path.dirname(filePath))) : null as string | null,
     permissionMode: null as string | null,
     sessionIdFromRecord: null as string | null,
+    dayMap: new Map<string, TokenUsage>(),
   }
 }
 
@@ -96,6 +97,19 @@ function processRecord(state: ReturnType<typeof makeSessionState>, record: Jsonl
     state.usage.cache_creation_input_tokens += u.cache_creation_input_tokens ?? 0
     state.usage.cache_read_input_tokens += u.cache_read_input_tokens ?? 0
     state.usage.output_tokens += u.output_tokens ?? 0
+    if (record.timestamp) {
+      const localDate = new Date(record.timestamp).toLocaleDateString('en-CA') // YYYY-MM-DD
+      const existing = state.dayMap.get(localDate) ?? {
+        input_tokens: 0, cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0, output_tokens: 0,
+      }
+      state.dayMap.set(localDate, {
+        input_tokens:                existing.input_tokens + (u.input_tokens ?? 0),
+        cache_creation_input_tokens: existing.cache_creation_input_tokens + (u.cache_creation_input_tokens ?? 0),
+        cache_read_input_tokens:     existing.cache_read_input_tokens + (u.cache_read_input_tokens ?? 0),
+        output_tokens:               existing.output_tokens + (u.output_tokens ?? 0),
+      })
+    }
   }
 }
 
@@ -119,6 +133,7 @@ function finalizeSession(state: ReturnType<typeof makeSessionState>, filePath: s
     parentSessionId: state.parentSessionId,
     summary: null,
     permissionMode: state.permissionMode,
+    dayMap: state.dayMap.size > 0 ? state.dayMap : undefined,
   }
 }
 
