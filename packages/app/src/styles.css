@@ -154,3 +154,13 @@ tr.selected td { background: #1d2735; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

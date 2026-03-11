@@ -39,13 +39,17 @@ function startIndexWorker() {
   const workerPath = path.join(__dirname, 'indexer.worker.js')
   if (!fs.existsSync(workerPath)) return
   const worker = new Worker(workerPath, { workerData: { dbPath: getDefaultDbPath() } })
+  mainWindow?.webContents.send('indexing-started')
   worker.on('message', (msg: { type: string; count: number }) => {
     if (msg.type === 'done') {
       console.log(`[indexer] Indexed ${msg.count} new sessions`)
       mainWindow?.webContents.send('indexing-complete', msg.count)
     }
   })
-  worker.on('error', (err) => console.error('[indexer] Worker error:', err))
+  worker.on('error', (err) => {
+    console.error('[indexer] Worker error:', err)
+    mainWindow?.webContents.send('indexing-complete', 0)
+  })
 }
 
 function createWindow() {

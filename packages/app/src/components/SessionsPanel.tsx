@@ -21,6 +21,7 @@ type ClaudeTop = {
   getSessions: (f: unknown) => Promise<Session[]>
   summarizeSession: (id: string) => Promise<{ summary?: string; error?: string }>
   refreshIndex: () => Promise<boolean>
+  onIndexingComplete: (cb: (count: number) => void) => () => void
 }
 
 // Pricing per 1M tokens. Updated Feb 2026: Opus 4.6 reduced from $15/$75 → $5/$25.
@@ -108,7 +109,7 @@ function toDateStr(d: string | Date | null | undefined): string {
 
 type SortKey = 'id' | 'project' | 'model' | 'duration' | 'cost' | 'started'
 
-export function SessionsPanel() {
+export function SessionsPanel({ isIndexing }: { isIndexing?: boolean }) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selected, setSelected] = useState<Session | null>(null)
   const [project, setProject] = useState('')
@@ -161,7 +162,7 @@ export function SessionsPanel() {
     setSummary(res.error ? `Error: ${res.error}` : (res.summary ?? ''))
   }
 
-  useEffect(() => {
+  function loadSessions() {
     setLoading(true)
     setLoadError(null)
     const f: Record<string, unknown> = {}
@@ -172,7 +173,6 @@ export function SessionsPanel() {
     }
     ct().getSessions(f)
       .then((data) => {
-        // Normalize Date objects from IPC structured clone to ISO strings
         const normalized = data.map((s) => ({
           ...s,
           startedAt: s.startedAt instanceof Date ? s.startedAt.toISOString() : s.startedAt,
@@ -185,6 +185,14 @@ export function SessionsPanel() {
         setLoadError(String(err))
         setLoading(false)
       })
+  }
+
+  useEffect(() => { loadSessions() }, [project, since])
+
+  // Auto-reload when background indexing finishes
+  useEffect(() => {
+    const cleanup = ct().onIndexingComplete(() => loadSessions())
+    return cleanup
   }, [project, since])
 
   const sorted = sessions.slice().sort((a, b) => {
@@ -211,8 +219,8 @@ export function SessionsPanel() {
           <option value="30d">30 days</option>
           <option value="">All time</option>
         </select>
-        <button className="kill-btn" onClick={onRefreshIndex} disabled={indexing} style={{ marginLeft: 8, fontSize: 11 }}>
-          {indexing ? 'Indexing...' : '⟳ Refresh'}
+        <button className="kill-btn" onClick={onRefreshIndex} disabled={indexing || isIndexing} style={{ marginLeft: 8, fontSize: 11 }}>
+          {(indexing || isIndexing) ? '⟳ Indexing…' : '⟳ Refresh'}
         </button>
       </div>
 

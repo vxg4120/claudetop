@@ -36,5 +36,13 @@ contextBridge.exposeInMainWorld('claudetop', {
     ipcRenderer.on('standup-chunk', (_event, chunk) => callback(chunk))
     return () => ipcRenderer.removeAllListeners('standup-chunk')
   },
+  onIndexingStarted: (callback: () => void) => {
+    ipcRenderer.on('indexing-started', () => callback())
+    return () => ipcRenderer.removeAllListeners('indexing-started')
+  },
+  onIndexingComplete: (callback: (count: number) => void) => {
+    ipcRenderer.on('indexing-complete', (_event, count) => callback(count))
+    return () => ipcRenderer.removeAllListeners('indexing-complete')
+  },
   testNotification: () => ipcRenderer.invoke('test-notification'),
 })

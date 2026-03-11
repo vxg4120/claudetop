@@ -8,7 +8,10 @@ interface CostReport {
   byDay: Array<{ date: string; usd: number; sessions: number }>
 }
 
-type ClaudeTop = { getCostReport: (f: unknown) => Promise<CostReport> }
+type ClaudeTop = {
+  getCostReport: (f: unknown) => Promise<CostReport>
+  onIndexingComplete: (cb: (count: number) => void) => () => void
+}
 
 const COLORS = ['#4a9eff', '#68d391', '#f6ad55', '#fc8181', '#b794f4']
 
@@ -19,17 +22,25 @@ function projectLabel(slug: string): string {
   return parts.length >= 2 ? parts.slice(-2).join('/') : slug
 }
 
-export function AnalyticsPanel() {
+export function AnalyticsPanel({ isIndexing }: { isIndexing?: boolean }) {
   const [report, setReport] = useState<CostReport | null>(null)
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week')
+  const ct = () => (window as unknown as { claudetop: ClaudeTop }).claudetop
 
+  const load = (p: typeof period) => {
+    const ms = p === 'day' ? 86400000 : p === 'week' ? 7 * 86400000 : 30 * 86400000
+    ct().getCostReport({ since: new Date(Date.now() - ms) }).then(setReport)
+  }
+
+  useEffect(() => { load(period) }, [period])
+
+  // Auto-reload when background indexing finishes
   useEffect(() => {
-    const ms = period === 'day' ? 86400000 : period === 'week' ? 7 * 86400000 : 30 * 86400000
-    const filter = { since: new Date(Date.now() - ms) }
-    ;(window as unknown as { claudetop: ClaudeTop }).claudetop.getCostReport(filter).then(setReport)
+    const cleanup = ct().onIndexingComplete(() => load(period))
+    return cleanup
   }, [period])
 
-  if (!report) return <div className="empty-state">Loading...</div>
+  if (!report) return <div className="empty-state">{isIndexing ? 'Indexing sessions…' : 'Loading...'}</div>
 
   return (
     <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
@@ -42,6 +53,9 @@ export function AnalyticsPanel() {
             style={{ background: period === p ? '#1d2735' : undefined, marginRight: 4 }}
             onClick={() => setPeriod(p)}>{p}</button>
         ))}
+        {isIndexing && (
+          <span style={{ marginLeft: 12, fontSize: 11, color: '#4a9eff' }}>⟳ indexing…</span>
+        )}
       </div>
 
       {report.byDay.length > 0 && (
