@@ -61,17 +61,25 @@ claudetop gives you visibility into every Claude Code session running on your ma
 
 ## Screenshots
 
-> Desktop app — process list with runaway detection, detail panel with analyze + kill
+> **Live process monitor** — all active Claude Code agents with CPU/memory, runaway detection, and one-click kill
 
 ![Process monitor](docs/screenshots/processes.png)
 
-> Session history with per-token cost breakdown
+> **Session history** — searchable table with per-token cost breakdown and one-click AI summarization
 
 ![Sessions](docs/screenshots/sessions.png)
 
-> AI standup streaming output
+> **Cost analytics** — daily spend chart, top projects, and cost by model
+
+![Analytics](docs/screenshots/analytics.png)
+
+> **AI standup report** — Done / In Progress / Next Up / Blockers generated from your last 24h of sessions
 
 ![Standup](docs/screenshots/standup.png)
+
+> **CLI** — `claudetop list`, `sessions`, and `standup` from the terminal
+
+![CLI](docs/screenshots/cli.png)
 
 ---
 
