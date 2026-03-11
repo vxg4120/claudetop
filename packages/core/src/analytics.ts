@@ -56,7 +56,11 @@ export function querySessions(db: Db, filter: SessionFilter): ClaudeSession[] {
 export function getCostReport(db: Db, filter: SessionFilter): CostReport {
   const since = filter.since ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const until = filter.until ?? new Date()
-  const conditions = ['(started_at >= @since OR started_at IS NULL)', 'started_at <= @until']
+  // Include sessions active during the window: started before @until AND ended after @since (or still running)
+  const conditions = [
+    '(started_at <= @until OR started_at IS NULL)',
+    '(COALESCE(ended_at, datetime(\'now\')) >= @since)',
+  ]
   const params: Record<string, unknown> = {
     since: since.toISOString(),
     until: until.toISOString(),
@@ -82,8 +86,11 @@ export function getCostReport(db: Db, filter: SessionFilter): CostReport {
   `).all(params) as Array<{ model: string; usd: number; sessions: number }>
 
   const byDay = db.prepare(`
-    SELECT date(started_at, 'localtime') as date, SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
-    FROM sessions ${where} GROUP BY date(started_at, 'localtime') ORDER BY date ASC
+    SELECT date(COALESCE(ended_at, datetime('now')), 'localtime') as date,
+           SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
+    FROM sessions ${where}
+    GROUP BY date(COALESCE(ended_at, datetime('now')), 'localtime')
+    ORDER BY date ASC
   `).all(params) as Array<{ date: string; usd: number; sessions: number }>
 
   return { totalUsd: total.total, byProject, byModel, byDay, period: { from: since, to: until } }
