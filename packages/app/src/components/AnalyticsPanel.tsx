@@ -12,7 +12,7 @@ type ClaudeTop = { getCostReport: (f: unknown) => Promise<CostReport> }
 
 const COLORS = ['#4a9eff', '#68d391', '#f6ad55', '#fc8181', '#b794f4']
 
-// Slugs are encoded paths like "-Users-vgupta-Development-repos-claudetop"
+// Slugs are encoded paths like "-Users-username-Development-repos-my-project"
 // Show the last 2 meaningful segments, e.g. "repos/claudetop"
 function projectLabel(slug: string): string {
   const parts = slug.replace(/^-/, '').split('-').filter(Boolean)

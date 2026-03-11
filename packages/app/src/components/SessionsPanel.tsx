@@ -41,7 +41,7 @@ function fmt(s: number | null): string {
 }
 
 function projectName(cwd: string, slug: string): string {
-  // cwd is something like /Users/vgupta/Development/repos/cann/nevergreen-ui
+  // cwd is something like /Users/username/Development/repos/my-project
   if (cwd) {
     const parts = cwd.replace(/\\/g, '/').split('/').filter(Boolean)
     if (parts.length > 0) return parts[parts.length - 1]
