@@ -57,5 +57,17 @@ function createSchema(db: Db): void {
       estimated_cost_usd  REAL NOT NULL DEFAULT 0,
       session_id          TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS session_days (
+      session_id            TEXT NOT NULL,
+      date                  TEXT NOT NULL,
+      usd                   REAL NOT NULL DEFAULT 0,
+      input_tokens          INTEGER NOT NULL DEFAULT 0,
+      cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_read_tokens     INTEGER NOT NULL DEFAULT 0,
+      output_tokens         INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (session_id, date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_days_date ON session_days(date);
   `)
 }

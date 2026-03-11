@@ -21,6 +21,16 @@ describe('openDb', () => {
     closeDb(db)
   })
 
+  it('creates session_days table', () => {
+    const tmpPath = path.join(os.tmpdir(), `claudetop-db-days-${Date.now()}.db`)
+    const db = openDb(tmpPath)
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+    const names = tables.map((t) => t.name)
+    expect(names).toContain('session_days')
+    closeDb(db)
+    fs.unlinkSync(tmpPath)
+  })
+
   it('creates sessions table with required columns', () => {
     const db = openDb(testDbPath)
     const cols = db.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>
