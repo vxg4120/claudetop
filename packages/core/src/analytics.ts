@@ -56,41 +56,41 @@ export function querySessions(db: Db, filter: SessionFilter): ClaudeSession[] {
 export function getCostReport(db: Db, filter: SessionFilter): CostReport {
   const since = filter.since ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const until = filter.until ?? new Date()
-  // Include sessions active during the window: started before @until AND ended after @since (or still running)
-  const conditions = [
-    '(started_at <= @until OR started_at IS NULL)',
-    '(COALESCE(ended_at, datetime(\'now\')) >= @since)',
-  ]
-  const params: Record<string, unknown> = {
-    since: since.toISOString(),
-    until: until.toISOString(),
-  }
+
+  // YYYY-MM-DD strings for session_days date comparisons
+  const sinceDate = since.toISOString().slice(0, 10)
+  const untilDate = until.toISOString().slice(0, 10)
+
+  const params: Record<string, unknown> = { sinceDate, untilDate }
+
+  const sessionConditions = ['sd.date >= @sinceDate', 'sd.date <= @untilDate']
   if (filter.project) {
-    conditions.push('project_slug LIKE @project')
+    sessionConditions.push('s.project_slug LIKE @project')
     params.project = `%${filter.project}%`
   }
-  const where = `WHERE ${conditions.join(' AND ')}`
+  const sessionJoin = `
+    FROM sessions s
+    JOIN session_days sd ON sd.session_id = s.session_id
+    WHERE ${sessionConditions.join(' AND ')}
+  `
 
   const total = db.prepare(
-    `SELECT COALESCE(SUM(estimated_cost_usd), 0) as total FROM sessions ${where}`
+    `SELECT COALESCE(SUM(sd.usd), 0) as total ${sessionJoin}`
   ).get(params) as { total: number }
 
   const byProject = db.prepare(`
-    SELECT project_slug as project, SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
-    FROM sessions ${where} GROUP BY project_slug ORDER BY usd DESC
+    SELECT s.project_slug as project, SUM(sd.usd) as usd, COUNT(DISTINCT s.session_id) as sessions
+    ${sessionJoin} GROUP BY s.project_slug ORDER BY usd DESC
   `).all(params) as Array<{ project: string; usd: number; sessions: number }>
 
   const byModel = db.prepare(`
-    SELECT model, SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
-    FROM sessions ${where} GROUP BY model ORDER BY usd DESC
+    SELECT s.model as model, SUM(sd.usd) as usd, COUNT(DISTINCT s.session_id) as sessions
+    ${sessionJoin} GROUP BY s.model ORDER BY usd DESC
   `).all(params) as Array<{ model: string; usd: number; sessions: number }>
 
   const byDay = db.prepare(`
-    SELECT date(COALESCE(ended_at, datetime('now')), 'localtime') as date,
-           SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
-    FROM sessions ${where}
-    GROUP BY date(COALESCE(ended_at, datetime('now')), 'localtime')
-    ORDER BY date ASC
+    SELECT sd.date as date, SUM(sd.usd) as usd, COUNT(DISTINCT sd.session_id) as sessions
+    ${sessionJoin} GROUP BY sd.date ORDER BY sd.date ASC
   `).all(params) as Array<{ date: string; usd: number; sessions: number }>
 
   return { totalUsd: total.total, byProject, byModel, byDay, period: { from: since, to: until } }
