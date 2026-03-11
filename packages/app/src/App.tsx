@@ -77,7 +77,7 @@ export function App() {
   }, [])
 
   return (
-    <div className="layout" style={{ flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar
           processes={processes}
