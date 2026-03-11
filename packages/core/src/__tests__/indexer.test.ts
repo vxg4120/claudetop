@@ -37,6 +37,25 @@ describe('upsertSession', () => {
     expect(row.input_tokens).toBe(100)
     closeDb(db)
   })
+
+  it('writes session_days rows for each distinct day', () => {
+    const db = openDb(testDbPath)
+    const projectDir = path.join(testClaudeDir, '-Users-test-days')
+    const usage = { input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 5 }
+    const filePath = makeSessionFile(projectDir, 'days-test', [
+      { type: 'user', sessionId: 'days-test', timestamp: '2026-03-08T10:00:00Z', cwd: '/Users/test/days' },
+      { type: 'assistant', sessionId: 'days-test', timestamp: '2026-03-08T12:00:00Z',
+        message: { role: 'assistant', model: 'claude-sonnet-4-6', usage } },
+      { type: 'assistant', sessionId: 'days-test', timestamp: '2026-03-09T12:00:00Z',
+        message: { role: 'assistant', model: 'claude-sonnet-4-6', usage } },
+    ])
+    upsertSession(db, filePath)
+    const rows = db.prepare('SELECT * FROM session_days WHERE session_id = ? ORDER BY date').all('days-test') as Record<string, unknown>[]
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    const totalOut = rows.reduce((s, r) => s + (r.output_tokens as number), 0)
+    expect(totalOut).toBe(10)  // 2 messages × 5 output_tokens
+    closeDb(db)
+  })
 })
 
 describe('buildIndex', () => {

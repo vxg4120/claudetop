@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { Db } from './db'
-import { parseSessionFile, parseSessionFileStreamed, getClaudeProjectsDir, listSessionFiles } from './sessions'
+import { parseSessionFile, parseSessionFileStreamed, getClaudeProjectsDir, listSessionFiles, calculateCost } from './sessions'
 import { ClaudeSession } from './types'
 
 function sessionToRow(s: ClaudeSession): Record<string, unknown> {
@@ -42,6 +42,12 @@ const UPSERT_SQL = `
   )
 `
 
+const UPSERT_DAY_SQL = `
+  INSERT OR REPLACE INTO session_days
+    (session_id, date, usd, input_tokens, cache_creation_tokens, cache_read_tokens, output_tokens)
+  VALUES (@session_id, @date, @usd, @input_tokens, @cache_creation_tokens, @cache_read_tokens, @output_tokens)
+`
+
 export function upsertSession(db: Db, filePath: string): boolean {
   try {
     const stat = fs.statSync(filePath)
@@ -51,15 +57,34 @@ export function upsertSession(db: Db, filePath: string): boolean {
       : parseSessionFile(filePath)
     if (!session) return false
     db.prepare(UPSERT_SQL).run(sessionToRow(session))
+    upsertDays(db, session)
     return true
   } catch {
     return false
   }
 }
 
+function upsertDays(db: Db, session: ClaudeSession): void {
+  if (!session.dayMap?.size) return
+  db.prepare('DELETE FROM session_days WHERE session_id = ?').run(session.sessionId)
+  const stmt = db.prepare(UPSERT_DAY_SQL)
+  for (const [date, usage] of session.dayMap) {
+    stmt.run({
+      session_id:            session.sessionId,
+      date,
+      usd:                   session.model ? calculateCost(session.model, usage) : 0,
+      input_tokens:          usage.input_tokens,
+      cache_creation_tokens: usage.cache_creation_input_tokens,
+      cache_read_tokens:     usage.cache_read_input_tokens,
+      output_tokens:         usage.output_tokens,
+    })
+  }
+}
+
 // Sync upsert for small files (used by watcher)
 function upsertRow(db: Db, session: ClaudeSession): void {
   db.prepare(UPSERT_SQL).run(sessionToRow(session))
+  upsertDays(db, session)
 }
 
 export async function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): Promise<number> {
