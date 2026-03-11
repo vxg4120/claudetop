@@ -71,12 +71,22 @@ export function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): number {
   })
   if (staleFiles.length === 0) return 0
 
-  const insert = db.transaction((paths: string[]) => {
+  // Process in batches to avoid OOM with large initial indexes (9000+ subagent files)
+  const BATCH_SIZE = 200
+  let total = 0
+  const insertBatch = db.transaction((paths: string[]) => {
     let count = 0
-    for (const p of paths) { if (upsertSession(db, p)) count++ }
+    for (const p of paths) {
+      try {
+        if (upsertSession(db, p)) count++
+      } catch { /* skip unparseable files */ }
+    }
     return count
   })
-  return insert(staleFiles)
+  for (let i = 0; i < staleFiles.length; i += BATCH_SIZE) {
+    total += insertBatch(staleFiles.slice(i, i + BATCH_SIZE))
+  }
+  return total
 }
 
 export function startWatcher(db: Db, claudeDir = getClaudeProjectsDir()): () => void {
