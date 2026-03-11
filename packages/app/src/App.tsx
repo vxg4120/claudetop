@@ -85,7 +85,7 @@ export function App() {
           onViewChange={setView}
           alertCount={burnAlerts.length}
         />
-        <div className="main">
+        <div className="main" style={{ flex: 1 }}>
           <PanelErrorBoundary view={view}>
             {view === 'sessions'  ? <SessionsPanel isIndexing={isIndexing} /> :
              view === 'analytics' ? <AnalyticsPanel isIndexing={isIndexing} /> :
