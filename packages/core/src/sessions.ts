@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as readline from 'readline'
 import * as path from 'path'
 import * as os from 'os'
 import { ClaudeSession, TokenUsage } from './types'
@@ -50,93 +51,107 @@ interface JsonlRecord {
   }
 }
 
-export function parseSessionFile(filePath: string): ClaudeSession | null {
-  let lines: string[]
-  try {
-    lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
-    if (lines.length > 20000) lines = lines.slice(0, 20000) // cap to avoid OOM on huge files
-  } catch {
-    return null
-  }
-
+function makeSessionState(filePath: string) {
   const sessionId = path.basename(filePath, '.jsonl')
-
-  // Handle subagent path: <claudeDir>/<projectSlug>/<parentSessionId>/subagents/<agentId>.jsonl
   const isSubagentPath = path.basename(path.dirname(filePath)) === 'subagents'
   const projectDir = isSubagentPath
     ? path.basename(path.dirname(path.dirname(path.dirname(filePath))))
     : path.basename(path.dirname(filePath))
   const projectSlug = decodeURIComponent(projectDir).replace(/^\//, '').replace(/\//g, '-')
-
-  const usage: TokenUsage = {
-    input_tokens: 0,
-    cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
-    output_tokens: 0,
-  }
-
-  let model: string | null = null
-  let cwd = ''
-  let gitBranch: string | null = null
-  let startedAt: Date | null = null
-  let endedAt: Date | null = null
-  let isSidechain = isSubagentPath
-  let parentSessionId: string | null = isSubagentPath
-    ? path.basename(path.dirname(path.dirname(filePath)))
-    : null
-  let permissionMode: string | null = null
-  let sessionIdFromRecord: string | null = null
-
-  for (const line of lines) {
-    let record: JsonlRecord
-    try { record = JSON.parse(line) } catch { continue }
-
-    if (record.sessionId && !sessionIdFromRecord) sessionIdFromRecord = record.sessionId
-    if (record.cwd && !cwd) cwd = record.cwd
-    if (record.gitBranch && !gitBranch) gitBranch = record.gitBranch
-    if (record.permissionMode && !permissionMode) permissionMode = record.permissionMode
-    if (record.isSidechain) isSidechain = true
-    if (record.parentUuid && !parentSessionId) parentSessionId = record.parentUuid
-
-    if (record.timestamp) {
-      const ts = new Date(record.timestamp)
-      if (!isNaN(ts.getTime())) {
-        if (!startedAt || ts < startedAt) startedAt = ts
-        if (!endedAt || ts > endedAt) endedAt = ts
-      }
-    }
-
-    if (record.message?.model) model = record.message.model
-    if (record.message?.usage) {
-      const u = record.message.usage
-      usage.input_tokens += u.input_tokens ?? 0
-      usage.cache_creation_input_tokens += u.cache_creation_input_tokens ?? 0
-      usage.cache_read_input_tokens += u.cache_read_input_tokens ?? 0
-      usage.output_tokens += u.output_tokens ?? 0
-    }
-  }
-
-  const durationSeconds =
-    startedAt && endedAt
-      ? Math.round((endedAt.getTime() - startedAt.getTime()) / 1000)
-      : null
-
   return {
-    sessionId: sessionIdFromRecord ?? sessionId,
+    sessionId,
     projectSlug,
-    cwd: cwd || projectSlug.replace(/-/g, '/'),
-    gitBranch,
-    model,
-    startedAt,
-    endedAt,
-    durationSeconds,
-    usage,
-    estimatedCostUsd: model ? calculateCost(model, usage) : 0,
-    isSidechain,
-    parentSessionId,
-    summary: null,
-    permissionMode,
+    isSubagentPath,
+    usage: { input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 } as TokenUsage,
+    model: null as string | null,
+    cwd: '',
+    gitBranch: null as string | null,
+    startedAt: null as Date | null,
+    endedAt: null as Date | null,
+    isSidechain: isSubagentPath,
+    parentSessionId: isSubagentPath ? path.basename(path.dirname(path.dirname(filePath))) : null as string | null,
+    permissionMode: null as string | null,
+    sessionIdFromRecord: null as string | null,
   }
+}
+
+function processRecord(state: ReturnType<typeof makeSessionState>, record: JsonlRecord) {
+  if (record.sessionId && !state.sessionIdFromRecord) state.sessionIdFromRecord = record.sessionId
+  if (record.cwd && !state.cwd) state.cwd = record.cwd
+  if (record.gitBranch && !state.gitBranch) state.gitBranch = record.gitBranch
+  if (record.permissionMode && !state.permissionMode) state.permissionMode = record.permissionMode
+  if (record.isSidechain) state.isSidechain = true
+  if (record.parentUuid && !state.parentSessionId) state.parentSessionId = record.parentUuid
+  if (record.timestamp) {
+    const ts = new Date(record.timestamp)
+    if (!isNaN(ts.getTime())) {
+      if (!state.startedAt || ts < state.startedAt) state.startedAt = ts
+      if (!state.endedAt || ts > state.endedAt) state.endedAt = ts
+    }
+  }
+  if (record.message?.model) state.model = record.message.model
+  if (record.message?.usage) {
+    const u = record.message.usage
+    state.usage.input_tokens += u.input_tokens ?? 0
+    state.usage.cache_creation_input_tokens += u.cache_creation_input_tokens ?? 0
+    state.usage.cache_read_input_tokens += u.cache_read_input_tokens ?? 0
+    state.usage.output_tokens += u.output_tokens ?? 0
+  }
+}
+
+function finalizeSession(state: ReturnType<typeof makeSessionState>, filePath: string): ClaudeSession {
+  const durationSeconds = state.startedAt && state.endedAt
+    ? Math.round((state.endedAt.getTime() - state.startedAt.getTime()) / 1000)
+    : null
+  return {
+    sessionId: state.sessionIdFromRecord ?? state.sessionId,
+    projectSlug: state.projectSlug,
+    cwd: state.cwd || state.projectSlug.replace(/-/g, '/'),
+    gitBranch: state.gitBranch,
+    model: state.model,
+    startedAt: state.startedAt,
+    endedAt: state.endedAt,
+    durationSeconds,
+    usage: state.usage,
+    estimatedCostUsd: state.model ? calculateCost(state.model, state.usage) : 0,
+    isSidechain: state.isSidechain,
+    parentSessionId: state.parentSessionId,
+    summary: null,
+    permissionMode: state.permissionMode,
+  }
+}
+
+export function parseSessionFile(filePath: string): ClaudeSession | null {
+  try {
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
+    const state = makeSessionState(filePath)
+    for (const line of lines) {
+      try { processRecord(state, JSON.parse(line)) } catch { /* skip bad lines */ }
+    }
+    return finalizeSession(state, filePath)
+  } catch {
+    return null
+  }
+}
+
+export async function parseSessionFileStreamed(filePath: string): Promise<ClaudeSession | null> {
+  return new Promise((resolve) => {
+    let stream: fs.ReadStream
+    try {
+      stream = fs.createReadStream(filePath, { encoding: 'utf8' })
+    } catch {
+      return resolve(null)
+    }
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity })
+    const state = makeSessionState(filePath)
+    rl.on('line', (line) => {
+      if (!line.trim()) return
+      try { processRecord(state, JSON.parse(line)) } catch { /* skip bad lines */ }
+    })
+    rl.on('close', () => resolve(finalizeSession(state, filePath)))
+    rl.on('error', () => resolve(null))
+    stream.on('error', () => { rl.close(); resolve(null) })
+  })
 }
 
 export function getClaudeProjectsDir(): string {

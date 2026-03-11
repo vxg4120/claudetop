@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { Db } from './db'
-import { parseSessionFile, getClaudeProjectsDir, listSessionFiles } from './sessions'
+import { parseSessionFile, parseSessionFileStreamed, getClaudeProjectsDir, listSessionFiles } from './sessions'
 import { ClaudeSession } from './types'
 
 function sessionToRow(s: ClaudeSession): Record<string, unknown> {
@@ -43,53 +43,76 @@ const UPSERT_SQL = `
 `
 
 export function upsertSession(db: Db, filePath: string): boolean {
-  const session = parseSessionFile(filePath)
-  if (!session) return false
-  db.prepare(UPSERT_SQL).run(sessionToRow(session))
-  return true
+  try {
+    const stat = fs.statSync(filePath)
+    // For large files changed by the watcher, parse synchronously but they're rare in live sessions
+    const session = stat.size > 10 * 1024 * 1024
+      ? null // skip huge live files; they'll be streamed on next full buildIndex
+      : parseSessionFile(filePath)
+    if (!session) return false
+    db.prepare(UPSERT_SQL).run(sessionToRow(session))
+    return true
+  } catch {
+    return false
+  }
 }
 
-export function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): number {
+// Sync upsert for small files (used by watcher)
+function upsertRow(db: Db, session: ClaudeSession): void {
+  db.prepare(UPSERT_SQL).run(sessionToRow(session))
+}
+
+export async function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): Promise<number> {
   const files = listSessionFiles(claudeDir)
 
-  // Re-index any file that is new OR whose mtime is newer than its indexed_at timestamp,
-  // so sessions that accumulated tokens while the app was not running are refreshed.
   const indexedAt = new Map(
     (db.prepare('SELECT session_id, indexed_at FROM sessions').all() as { session_id: string; indexed_at: string }[])
       .map((r) => [r.session_id, new Date(r.indexed_at).getTime()])
   )
 
-  const MAX_FILE_BYTES = 50 * 1024 * 1024 // skip files > 50 MB to avoid OOM
+  const STREAM_THRESHOLD = 10 * 1024 * 1024 // stream files > 10 MB
 
-  const staleFiles = files.filter((f) => {
+  const staleFiles: Array<{ path: string; stream: boolean }> = []
+  for (const f of files) {
     try {
       const stat = fs.statSync(f)
-      if (stat.size > MAX_FILE_BYTES) return false
       const id = path.basename(f, '.jsonl')
       const lastIndexed = indexedAt.get(id)
-      if (!lastIndexed) return true // new file
-      return stat.mtimeMs > lastIndexed
-    } catch {
-      return false
-    }
-  })
+      if (lastIndexed && stat.mtimeMs <= lastIndexed) continue
+      staleFiles.push({ path: f, stream: stat.size > STREAM_THRESHOLD })
+    } catch { /* skip inaccessible files */ }
+  }
   if (staleFiles.length === 0) return 0
 
-  // Process in batches to avoid OOM with large initial indexes (9000+ subagent files)
+  // Separate small (sync) and large (streamed) files
+  const small = staleFiles.filter((f) => !f.stream).map((f) => f.path)
+  const large = staleFiles.filter((f) => f.stream).map((f) => f.path)
+
+  // Batch-insert small files synchronously
   const BATCH_SIZE = 200
   let total = 0
   const insertBatch = db.transaction((paths: string[]) => {
     let count = 0
     for (const p of paths) {
       try {
-        if (upsertSession(db, p)) count++
-      } catch { /* skip unparseable files */ }
+        const session = parseSessionFile(p)
+        if (session) { upsertRow(db, session); count++ }
+      } catch { /* skip */ }
     }
     return count
   })
-  for (let i = 0; i < staleFiles.length; i += BATCH_SIZE) {
-    total += insertBatch(staleFiles.slice(i, i + BATCH_SIZE))
+  for (let i = 0; i < small.length; i += BATCH_SIZE) {
+    total += insertBatch(small.slice(i, i + BATCH_SIZE))
   }
+
+  // Stream large files one at a time to stay memory-safe
+  for (const p of large) {
+    try {
+      const session = await parseSessionFileStreamed(p)
+      if (session) { upsertRow(db, session); total++ }
+    } catch { /* skip */ }
+  }
+
   return total
 }
 
