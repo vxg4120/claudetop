@@ -59,7 +59,12 @@ export function parseSessionFile(filePath: string): ClaudeSession | null {
   }
 
   const sessionId = path.basename(filePath, '.jsonl')
-  const projectDir = path.basename(path.dirname(filePath))
+
+  // Handle subagent path: <claudeDir>/<projectSlug>/<parentSessionId>/subagents/<agentId>.jsonl
+  const isSubagentPath = path.basename(path.dirname(filePath)) === 'subagents'
+  const projectDir = isSubagentPath
+    ? path.basename(path.dirname(path.dirname(path.dirname(filePath))))
+    : path.basename(path.dirname(filePath))
   const projectSlug = decodeURIComponent(projectDir).replace(/^\//, '').replace(/\//g, '-')
 
   const usage: TokenUsage = {
@@ -74,8 +79,10 @@ export function parseSessionFile(filePath: string): ClaudeSession | null {
   let gitBranch: string | null = null
   let startedAt: Date | null = null
   let endedAt: Date | null = null
-  let isSidechain = false
-  let parentSessionId: string | null = null
+  let isSidechain = isSubagentPath
+  let parentSessionId: string | null = isSubagentPath
+    ? path.basename(path.dirname(path.dirname(filePath)))
+    : null
   let permissionMode: string | null = null
   let sessionIdFromRecord: string | null = null
 
@@ -143,8 +150,21 @@ export function listSessionFiles(claudeDir = getClaudeProjectsDir()): string[] {
     try {
       if (!fs.statSync(projectPath).isDirectory()) continue
     } catch { continue }
-    for (const file of fs.readdirSync(projectPath)) {
-      if (file.endsWith('.jsonl')) files.push(path.join(projectPath, file))
+    for (const entry of fs.readdirSync(projectPath)) {
+      const entryPath = path.join(projectPath, entry)
+      if (entry.endsWith('.jsonl')) {
+        files.push(entryPath)
+      } else {
+        // Check for subagents: <project>/<session-uuid>/subagents/*.jsonl
+        const subagentsPath = path.join(entryPath, 'subagents')
+        try {
+          if (!fs.statSync(entryPath).isDirectory()) continue
+          if (!fs.existsSync(subagentsPath)) continue
+          for (const sub of fs.readdirSync(subagentsPath)) {
+            if (sub.endsWith('.jsonl')) files.push(path.join(subagentsPath, sub))
+          }
+        } catch { continue }
+      }
     }
   }
   return files
