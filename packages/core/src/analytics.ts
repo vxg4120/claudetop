@@ -82,8 +82,8 @@ export function getCostReport(db: Db, filter: SessionFilter): CostReport {
   `).all(params) as Array<{ model: string; usd: number; sessions: number }>
 
   const byDay = db.prepare(`
-    SELECT date(started_at) as date, SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
-    FROM sessions ${where} GROUP BY date(started_at) ORDER BY date ASC
+    SELECT date(started_at, 'localtime') as date, SUM(estimated_cost_usd) as usd, COUNT(*) as sessions
+    FROM sessions ${where} GROUP BY date(started_at, 'localtime') ORDER BY date ASC
   `).all(params) as Array<{ date: string; usd: number; sessions: number }>
 
   return { totalUsd: total.total, byProject, byModel, byDay, period: { from: since, to: until } }

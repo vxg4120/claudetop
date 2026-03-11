@@ -1,3 +1,4 @@
+import * as fs from 'fs'
 import * as path from 'path'
 import { Db } from './db'
 import { parseSessionFile, getClaudeProjectsDir, listSessionFiles } from './sessions'
@@ -51,20 +52,31 @@ export function upsertSession(db: Db, filePath: string): boolean {
 export function buildIndex(db: Db, claudeDir = getClaudeProjectsDir()): number {
   const files = listSessionFiles(claudeDir)
 
-  // Skip sessions already indexed to avoid re-reading gigabytes of data on every startup
-  const existing = new Set(
-    (db.prepare('SELECT session_id FROM sessions').all() as { session_id: string }[])
-      .map((r) => r.session_id)
+  // Re-index any file that is new OR whose mtime is newer than its indexed_at timestamp,
+  // so sessions that accumulated tokens while the app was not running are refreshed.
+  const indexedAt = new Map(
+    (db.prepare('SELECT session_id, indexed_at FROM sessions').all() as { session_id: string; indexed_at: string }[])
+      .map((r) => [r.session_id, new Date(r.indexed_at).getTime()])
   )
-  const newFiles = files.filter((f) => !existing.has(path.basename(f, '.jsonl')))
-  if (newFiles.length === 0) return 0
+
+  const staleFiles = files.filter((f) => {
+    const id = path.basename(f, '.jsonl')
+    const lastIndexed = indexedAt.get(id)
+    if (!lastIndexed) return true // new file
+    try {
+      return fs.statSync(f).mtimeMs > lastIndexed
+    } catch {
+      return false
+    }
+  })
+  if (staleFiles.length === 0) return 0
 
   const insert = db.transaction((paths: string[]) => {
     let count = 0
     for (const p of paths) { if (upsertSession(db, p)) count++ }
     return count
   })
-  return insert(newFiles)
+  return insert(staleFiles)
 }
 
 export function startWatcher(db: Db, claudeDir = getClaudeProjectsDir()): () => void {
