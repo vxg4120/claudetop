@@ -18,7 +18,9 @@ export const MODEL_PRICING: Record<string, {
 }
 
 export function calculateCost(model: string, usage: TokenUsage): number {
-  const pricing = MODEL_PRICING[model]
+  // Strip date suffix so versioned IDs like 'claude-haiku-4-5-20251001' match base keys
+  const baseModel = model.replace(/-\d{8}$/, '')
+  const pricing = MODEL_PRICING[baseModel] ?? MODEL_PRICING[model]
   if (!pricing) return 0
   const M = 1_000_000
   return (
